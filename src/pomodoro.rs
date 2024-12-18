@@ -6,120 +6,118 @@ use std::sync::mpsc::Receiver;
 use std::sync::mpsc::TryRecvError;
 use std::thread;
 use serde::{Serialize, Deserialize};
-
-/*
-{
-    "":"",
-    "separator":true,
-    "separator_block_width":15,
-    "name":"test",
-    "command":"/home/icemau/projects/i3blocks-nice-blocks/target/debug/pomodoro",
-    "markup":"pango",
-    "interval":"persist",
-    "format":"json",
-    "full_text":"<span>Empty</span>",
-    "button":1,
-    "modifiers":[],
-    "x":1763,
-    "y":1431,
-    "relative_x":13,
-    "relative_y":12,
-    "output_x":1763,
-    "output_y":1431,
-    "width":40,
-    "height":21}"
-}
-*/
-#[derive(Serialize, Debug)]
-struct S {
-    full_text: String
-}
+use serde_json::json;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct R {
     button: i32,
 }
 
+enum TimerState {
+    Ready,
+    Started,
+    Paused,
+}
+
 struct Timer {
-    cur_interval: i32,
-    start_time: Option<SystemTime>,
+    state: TimerState,
+    last_update: SystemTime,
+    duration: Duration,
+    cur_interval: usize,
     intervals: Vec<Duration>,
 }
 
 impl Timer {
     fn new() -> Self {
+        let intervals = vec![
+            Duration::from_secs(15),
+            Duration::from_secs(5),
+            Duration::from_secs(15),
+            Duration::from_secs(5),
+            Duration::from_secs(15),
+            Duration::from_secs(15),
+        ];
+
         return Self {
+            state: TimerState::Ready,
+            last_update: SystemTime::now(),
+            duration: intervals[0],
             cur_interval: 0,
-            start_time: None,
-            intervals: vec![
-                Duration::from_secs(10),
-                Duration::from_secs(15),
-                Duration::from_secs(25 * 60),
-                Duration::from_secs(5 * 60),
-                Duration::from_secs(25 * 60),
-                Duration::from_secs(15 * 60),
-            ]
+            intervals,
         }
     }
 
     fn start(&mut self) {
-        self.start_time = Some(SystemTime::now());
-    }
-
-    fn is_done(&self) -> bool {
-        let now = SystemTime::now();
-        if let Some(start_time) = self.start_time {
-            return now.duration_since(start_time).unwrap() >= self.intervals[self.cur_interval as usize];
-        } else {
-            return false;
+        if let TimerState::Ready = self.state {
+            self.state = TimerState::Started;
+            self.duration = self.intervals[self.cur_interval];
         }
     }
 
     fn next(&mut self) {
-        self.start_time = None;
-        self.cur_interval += 1;
+        if self.cur_interval >= self.intervals.len() - 1 {
+            self.cur_interval = 0;
+        } else {
+            self.cur_interval += 1; 
+        }
+        self.state = TimerState::Ready;
+        self.duration = self.intervals[self.cur_interval];
+    }
+    
+    fn toggle_pause(&mut self) {
+        if let TimerState::Started = self.state {
+            self.state = TimerState::Paused;
+        } else if let TimerState::Paused = self.state {
+            self.state = TimerState::Started;
+        } 
+    }
+
+    fn update(&mut self) {
+        let now = SystemTime::now();
+        match self.state {
+            TimerState::Started => {
+                let since = now.duration_since(self.last_update).unwrap();
+                if since >= self.duration {
+                    self.next();
+                } else {
+                    self.duration -= since;
+                }
+            },
+            _ => { }
+        };
+
+        self.last_update = now;
     }
 
     fn display(&self) -> String {
-        let now = SystemTime::now();
-        if let Some(start_time) = self.start_time {
-            let since = now.duration_since(start_time).unwrap();
-            if self.intervals[self.cur_interval as usize] < since {
-                return format!("{:02}:{:02}", 0, 0);
-            } else {
-                let diff = self.intervals[self.cur_interval as usize] - since; 
-                let sec = diff.as_secs_f64() as i32;
-                return format!("{:02}:{:02}", sec / 60, sec % 60)
-            }
-        } else {
-            let diff = self.intervals[self.cur_interval as usize]; 
-            let sec = diff.as_secs_f64() as i32;
-            return format!("{:02}:{:02}", sec / 60, sec % 60)
-        }
+        let min = self.duration.as_secs() / 60;
+        let sec = self.duration.as_secs() % 60;
+        format!("{:02}:{:02}", min, sec)
     }
 }
 
 fn main() -> io::Result<()>{
     let stdin_channel = spawn_stdin_channel();
     let mut timer = Timer::new();
+
     loop {
+        timer.update();
         match stdin_channel.try_recv() {
             Ok(key) => {
                 let r: R = serde_json::from_str(&key).unwrap();
                 if r.button == 1 {
                     timer.start()
+                } else if r.button == 3 {
+                    timer.toggle_pause();
                 }
             }
             Err(TryRecvError::Empty) => {},
             Err(TryRecvError::Disconnected) => panic!("Channel disconnected"),
         };
-        let msg = S{full_text: format!("<span>{}</span>", timer.display())};
+        let msg = json!({"full_text": format!("<span>{}</span>", timer.display())});
         let serialized = serde_json::to_string(&msg).unwrap();
         println!("{}", serialized);
-        if timer.is_done(){
-            timer.next()
-        };
-        sleep(Duration::from_millis(500));
+        sleep(Duration::from_secs(1));
     }
 }
 
