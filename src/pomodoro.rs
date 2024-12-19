@@ -89,10 +89,22 @@ impl Timer {
         self.last_update = now;
     }
 
-    fn display(&self) -> String {
+    fn display_interval(&self) -> String {
+        format!("{}/{}", self.cur_interval / 2, self.intervals.len() / 2)
+    }
+
+    fn display_duration(&self) -> String {
         let min = self.duration.as_secs() / 60;
         let sec = self.duration.as_secs() % 60;
         format!("{:02}:{:02}", min, sec)
+    }
+
+    fn display_action(&self) -> &'static str {
+        if self.cur_interval % 2 == 0 {
+            "F"
+        } else {
+            "P"
+        }
     }
 }
 
@@ -101,7 +113,6 @@ fn main() -> io::Result<()>{
     let mut timer = Timer::new();
 
     loop {
-        timer.update();
         match stdin_channel.try_recv() {
             Ok(key) => {
                 let r: R = serde_json::from_str(&key).unwrap();
@@ -114,10 +125,16 @@ fn main() -> io::Result<()>{
             Err(TryRecvError::Empty) => {},
             Err(TryRecvError::Disconnected) => panic!("Channel disconnected"),
         };
-        let msg = json!({"full_text": format!("<span>{}</span>", timer.display())});
+        let text = format!("<span>{} {} {}</span>",
+            timer.display_interval(),
+            timer.display_duration(),
+            timer.display_action()
+        );
+        let msg = json!({"full_text": text});
         let serialized = serde_json::to_string(&msg).unwrap();
         println!("{}", serialized);
         sleep(Duration::from_secs(1));
+        timer.update();
     }
 }
 
