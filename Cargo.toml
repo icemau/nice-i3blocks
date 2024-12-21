@@ -18,3 +18,7 @@ strip = "debuginfo"
 [[bin]]
 name = "pomodoro"
 path = "src/pomodoro.rs"
+
+[[bin]]
+name = "cpu_usage"
+path = "src/cpu_usage.rs"
