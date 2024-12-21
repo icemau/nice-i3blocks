@@ -14,6 +14,10 @@ struct Args {
     /// Floating point precision of cpu usage
     #[arg(short, default_value_t = 2)]
     decimal: usize,
+
+    /// Label written befor the cpu usage value
+    #[arg(short, default_value = "CPU ")]
+    label: String
 }
 
 struct CpuStat {
@@ -103,7 +107,7 @@ fn main() -> io::Result<()>{
         let total = cpu_stat.get_total();
 
         let p: f64 = 100.0 * (used - old_used) as f64 / (total - old_total) as f64;
-        println!("{:6.1$}", p, args.decimal);
+        println!("{}{:6.2$}", args.label, p, args.decimal);
 
         old_total = total;
         old_used = used;
