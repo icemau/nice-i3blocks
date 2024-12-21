@@ -1,14 +1,13 @@
 use std::time::{Duration, SystemTime};
-use std::thread::sleep;
 use std::{io, usize};
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::TryRecvError;
-use std::thread;
-use serde::{Serialize, Deserialize};
+use std::thread::{self, sleep};
+use serde::Deserialize;
 use serde_json::json;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 struct R {
     button: i32,
 }
@@ -65,11 +64,11 @@ impl Timer {
     }
     
     fn toggle_pause(&mut self) {
-        if let TimerState::Started = self.state {
-            self.state = TimerState::Paused;
-        } else if let TimerState::Paused = self.state {
-            self.state = TimerState::Started;
-        } 
+        match self.state {
+            TimerState::Started => self.state = TimerState::Paused,
+            TimerState::Paused => self.state = TimerState::Started,
+            _ => {}
+        }
     }
 
     fn update(&mut self) {
@@ -125,13 +124,14 @@ fn main() -> io::Result<()>{
             Err(TryRecvError::Empty) => {},
             Err(TryRecvError::Disconnected) => panic!("Channel disconnected"),
         };
-        let text = format!("<span>{} {} {}</span>",
+        let text = format!("{} {} {}",
             timer.display_interval(),
             timer.display_duration(),
             timer.display_action()
         );
-        let msg = json!({"full_text": text});
-        let serialized = serde_json::to_string(&msg).unwrap();
+        let msg = format!("<span>{}</span>", text);
+        let res = json!({"full_text": msg});
+        let serialized = serde_json::to_string(&res).unwrap();
         println!("{}", serialized);
         sleep(Duration::from_secs(1));
         timer.update();
