@@ -1,3 +1,5 @@
+use clap::Parser;
+use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 use std::{io, usize};
 use std::sync::mpsc;
@@ -6,6 +8,32 @@ use std::sync::mpsc::TryRecvError;
 use std::thread::{self, sleep};
 use serde::Deserialize;
 use serde_json::json;
+
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Number of intervals
+    #[arg(short, long, default_value_t = 5)]
+    count: usize,
+
+    /// Duration of the focus intervals
+    #[arg(short, long, default_value = "25m", value_parser = parse_duration)]
+    focus: humantime::Duration,
+
+    /// Duration of the pause intervals
+    #[arg(short, long, default_value = "5m", value_parser = parse_duration)]
+    pause: humantime::Duration,
+
+    /// Duration of the long pause interval
+    #[arg(short, long, default_value = "15m", value_parser = parse_duration)]
+    long_pause: humantime::Duration,
+}
+
+fn parse_duration(arg: &str) -> Result<humantime::Duration, humantime::DurationError> {
+    humantime::Duration::from_str(arg)
+}
 
 #[derive(Deserialize, Debug)]
 struct R {
@@ -27,15 +55,20 @@ struct Timer {
 }
 
 impl Timer {
-    fn new() -> Self {
-        let intervals = vec![
-            Duration::from_secs(15),
-            Duration::from_secs(5),
-            Duration::from_secs(15),
-            Duration::from_secs(5),
-            Duration::from_secs(15),
-            Duration::from_secs(15),
-        ];
+    fn new(count: usize, focus: Duration, pause: Duration, long_pause: Duration) -> Self {
+        if count == 0 {
+            panic!("Timer interval count must be at least 1");
+        }
+
+        let mut intervals = Vec::with_capacity(count * 2);
+        for i in 0..count {
+            intervals.push(focus);
+            if i == count - 1 {
+                intervals.push(long_pause);
+            } else {
+                intervals.push(pause);
+            }
+        }
 
         return Self {
             state: TimerState::Ready,
@@ -108,8 +141,14 @@ impl Timer {
 }
 
 fn main() -> io::Result<()>{
+    let args = Args::parse();
+
     let stdin_channel = spawn_stdin_channel();
-    let mut timer = Timer::new();
+    let mut timer = Timer::new(args.count,
+        args.focus.into(),
+        args.pause.into(),
+        args.long_pause.into()
+    );
 
     loop {
         match stdin_channel.try_recv() {
