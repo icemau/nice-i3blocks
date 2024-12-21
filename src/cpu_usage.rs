@@ -1,6 +1,20 @@
+use clap::Parser;
 use std::time::Duration;
 use std::io::{self, BufRead};
 use std::thread::sleep;
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Refresh time in seconds
+    #[arg(short, default_value_t = 1)]
+    time: u64,
+
+    /// Floating point precision of cpu usage
+    #[arg(short, default_value_t = 2)]
+    decimal: usize,
+}
 
 struct CpuStat {
     user: u64,
@@ -76,21 +90,24 @@ fn get_usage() -> CpuStat {
 }
 
 fn main() -> io::Result<()>{
+    let args = Args::parse();
+
     let cpu_stat = get_usage();
 
     let mut old_used = cpu_stat.get_used();
     let mut old_total = cpu_stat.get_total();
 
     loop {
-        sleep(Duration::from_secs(1));
         let cpu_stat = get_usage();
         let used = cpu_stat.get_used();
         let total = cpu_stat.get_total();
 
         let p: f64 = 100.0 * (used - old_used) as f64 / (total - old_total) as f64;
-        println!("{:6.2}", p);
+        println!("{:6.1$}", p, args.decimal);
 
         old_total = total;
         old_used = used;
+
+        sleep(Duration::from_secs(args.time));
     }
 }
