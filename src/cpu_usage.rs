@@ -14,6 +14,14 @@ struct Args {
     /// Floating point precision of cpu usage
     #[arg(short, default_value_t = 2)]
     decimal: usize,
+    
+    /// Warning color for cpu load
+    #[arg(short, default_value = "#FFA500")]
+    warining_color: String,
+
+    /// Critical color for cpu load
+    #[arg(short, default_value = "#FF7373")]
+    critical_color: String,
 
     /// Label written befor the cpu usage value
     #[arg(short, default_value = "CPU ")]
@@ -93,6 +101,9 @@ fn get_usage() -> CpuStat {
     }
 }
 
+static RED: &str = "#FF7373";
+static ORANGE: &str = "#FFA500";
+
 fn main() -> io::Result<()>{
     let args = Args::parse();
 
@@ -107,7 +118,14 @@ fn main() -> io::Result<()>{
         let total = cpu_stat.get_total();
 
         let p: f64 = 100.0 * (used - old_used) as f64 / (total - old_total) as f64;
-        println!("{}{:6.2$}", args.label, p, args.decimal);
+
+        if p < 50.0 {
+            println!("{}<span>{:6.2$}</span>",args.label, p, args.decimal);
+        } else if p < 80.0 {
+            println!("{}<span color='{}'>{:6.3$}</span>", args.label, ORANGE, p, args.decimal);
+        } else {
+            println!("{}<span color='{}'>{:6.3$}</span>", args.label, RED, p, args.decimal);
+        }
 
         old_total = total;
         old_used = used;
