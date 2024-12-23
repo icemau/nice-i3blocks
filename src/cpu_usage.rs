@@ -117,7 +117,12 @@ fn main() -> io::Result<()>{
         let used = cpu_stat.get_used();
         let total = cpu_stat.get_total();
 
-        let p: f64 = 100.0 * (used - old_used) as f64 / (total - old_total) as f64;
+        let p: f64;
+        if total - old_total == 0 {
+            p = 0.0
+        } else {
+            p = 100.0 * (used - old_used) as f64 / (total - old_total) as f64;
+        }
 
         if p < 50.0 {
             println!("{}<span>{:6.2$}</span>",args.label, p, args.decimal);
