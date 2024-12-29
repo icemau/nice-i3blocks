@@ -28,3 +28,7 @@ path = "src/cpu_usage.rs"
 [[bin]]
 name = "mem_usage"
 path = "src/mem_usage.rs"
+
+[[bin]]
+name = "bandwidth"
+path = "src/bandwidth.rs"
