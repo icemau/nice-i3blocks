@@ -8,6 +8,8 @@ clap = { version = "4.5.23", features = ["derive"] }
 humantime = { version = "2.1" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.133"
+regex = { version = "1" }
+lazy_static = { version = "1.5" }
 
 [profile.release]
 codegen-units = 1
@@ -22,3 +24,7 @@ path = "src/pomodoro.rs"
 [[bin]]
 name = "cpu_usage"
 path = "src/cpu_usage.rs"
+
+[[bin]]
+name = "mem_usage"
+path = "src/mem_usage.rs"
