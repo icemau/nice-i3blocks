@@ -21,7 +21,7 @@
       packages.${system}.default = pkgs.rustPlatform.buildRustPackage{
         name = "nice-i3blocks";
         src = self;
-        cargoHash = "sha256-b/5lolTK/oMyoh6eIGlTVtZd7aS1f7rIjer0C7K9sHI=";
+        cargoHash = "sha256-FKP6GBUkpVvInv7Ie+vtmj2VHO4tznfsHuFY2Uc55Ag=";
       };
     };
 }
