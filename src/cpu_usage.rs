@@ -125,11 +125,11 @@ fn main() -> io::Result<()>{
         }
 
         if p < 50.0 {
-            println!("{}<span>{:6.2$}</span>",args.label, p, args.decimal);
+            println!("{}<span>{:6.2$}%</span>",args.label, p, args.decimal);
         } else if p < 80.0 {
-            println!("{}<span color='{}'>{:6.3$}</span>", args.label, ORANGE, p, args.decimal);
+            println!("{}<span color='{}'>{:6.3$}%</span>", args.label, ORANGE, p, args.decimal);
         } else {
-            println!("{}<span color='{}'>{:6.3$}</span>", args.label, RED, p, args.decimal);
+            println!("{}<span color='{}'>{:6.3$}%</span>", args.label, RED, p, args.decimal);
         }
 
         old_total = total;
